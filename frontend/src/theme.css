@@ -1,0 +1,95 @@
+/* Theme System - Light/Dark Mode Support */
+
+/* Light Mode (Default) */
+:root[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-hover: #e2e8f0;
+  --text-primary: #0d1117;
+  --text-secondary: #24292f;
+  --text-tertiary: #57606a;
+  --border-color: rgba(31, 35, 40, 0.15);
+  --border-hover: rgba(99, 102, 241, 0.6);
+  --accent: #6366f1;
+  --accent-light: #ede9fe;
+  --card-bg: #ffffff;
+  --card-border: rgba(31, 35, 40, 0.12);
+  --input-bg: #ffffff;
+  --input-border: rgba(31, 35, 40, 0.2);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Dark Mode */
+:root[data-theme="dark"] {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1a1f3a;
+  --bg-tertiary: #1e293b;
+  --bg-hover: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #94a3b8;
+  --border-color: rgba(71, 85, 105, 0.5);
+  --border-hover: rgba(99, 102, 241, 0.6);
+  --accent: #6366f1;
+  --accent-light: rgba(99, 102, 241, 0.2);
+  --card-bg: rgba(30, 41, 59, 0.7);
+  --card-border: rgba(71, 85, 105, 0.5);
+  --input-bg: rgba(15, 23, 42, 0.6);
+  --input-border: rgba(71, 85, 105, 0.4);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Smooth transitions for theme switching */
+body,
+.App,
+.App-header,
+.App-content,
+.controls-section,
+.left-panel,
+.right-panel,
+.subnet-list,
+.subnet-item,
+.filter-panel,
+.statistics,
+.stat-card,
+.ip-visualization,
+.ip-grid-container,
+.legend,
+.placeholder,
+.welcome-message,
+.legend-item,
+.color-box,
+.subnet-list h3,
+.subnet-list-header h3,
+.subnet-header h4,
+.subnet-az,
+.subnet-cidr,
+.stat-label,
+.stat-value,
+.progress-info,
+.progress-count,
+.progress-bar,
+.visualization-header h3,
+.statistics h3 {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Form elements */
+.filter-input,
+.sort-select,
+.region-selector select,
+.vpc-selector select {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Buttons */
+.theme-toggle-button,
+.about-button,
+.refresh-button,
+.toggle-filters-btn,
+.reset-filters-btn {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
