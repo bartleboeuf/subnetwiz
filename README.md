@@ -20,7 +20,10 @@ If you think some useful information could be added to this application, create 
 - **VPC & Subnet Overview**: Browse all VPCs and subnets with IP usage statistics and metadata
 - **IP Allocation Visualization**: Interactive grid showing each IP address color-coded by status (used/free/reserved)
 - **Fragmentation Analysis**: Calculate fragmentation scores (0-100) measuring IP allocation efficiency
-- **Advanced Filtering**: Search subnets, filter by Availability Zone, utilization range, and fragmentation level
+- **Advanced Filtering & Sorting** (Phase 15):
+  - **Filters**: Search by name, filter by Availability Zone, utilization range, fragmentation level, **IP address containment**, and **tag values**
+  - **Sorts**: By utilization, fragmentation, name, **subnet tags**, or **CIDR range** (by address or size)
+  - **Collapsible UI**: Tag filters with expand/collapse and scrollable container for many tags
 - **EKS Support**: Track primary IPs, secondary IPs, and prefix delegation IPs (/28 blocks)
 - **Large Subnet Support**: Handle /16+ subnets (65K+ IPs) with pagination and async processing
 - **Multi-Region**: Query any AWS region via query parameter or environment variable
@@ -169,7 +172,7 @@ All endpoints support multi-region queries:
 | `/api/health` | GET | Health check + environment info | No |
 | `/api/regions` | GET | List available AWS regions | 1 hour |
 | `/api/vpcs` | GET | List all VPCs in region | 5 min |
-| `/api/vpc/<vpc_id>/subnets` | GET | Subnets with usage stats | No |
+| `/api/vpc/<vpc_id>/subnets` | GET | Subnets with usage stats + tags | No |
 | `/api/subnet/<subnet_id>/ips` | GET | All IPs in subnet | No |
 | `/api/subnet/<subnet_id>/ips/paginated` | GET | Paginated IPs (offset, limit) | No |
 | `/api/account-info` | GET | Account ID and partition info | No |
@@ -220,18 +223,42 @@ Task role provides EC2 permissions automatically.
 
 1. **Region Selector** (top-left): Choose AWS region
 2. **VPC Selector** (top-left): Choose VPC to analyze
-3. **Subnet List** (left panel):
+3. **Sort Selector** (top-right): Choose sort order
+   - By Utilization, Fragmentation, Name
+   - By Tag (with dynamic tag key selector)
+   - By CIDR Range (by address or by size)
+4. **Subnet List** (left panel):
    - Shows all subnets with utilization % and fragmentation score
-   - Collapsible filter panel (⚙️) for advanced filtering
+   - **Collapsible filter panel (⚙️)** with advanced options:
+     - Search by subnet name
+     - Filter by IP address (CIDR containment)
+     - Filter by Availability Zone (2-column layout)
+     - Filter by utilization range (sliders)
+     - Filter by fragmentation level (Low/Moderate/High)
+     - Filter by tag values (collapsible, scrollable)
    - Click subnet to view IP map
-4. **IP Visualization** (right panel):
+5. **IP Visualization** (right panel):
    - Color-coded blocks for each IP
    - Hover for details
    - Click to copy details to clipboard
-5. **Statistics** (right panel):
+6. **Statistics** (right panel):
    - IP allocation breakdown
    - Fragmentation analysis
    - First/last free IP
+
+### Using Advanced Filters
+
+**All filters use AND logic** - a subnet must pass ALL active filters to be displayed.
+
+**Examples:**
+- Search "prod" + Filter AZ "us-east-1a" = Show subnets with "prod" in name in us-east-1a only
+- Filter IP "10.0.1.50" + Filter Tag "Environment=prod" = Show prod subnets containing that IP
+- Filter Utilization 50-80% + Sort by Fragmentation = Show moderately utilized subnets, sorted by fragmentation
+
+**Tag Filtering:**
+- Click tag key to expand/collapse and see available values
+- Badge shows count of selected filters per tag
+- Scroll in tag container to see all tags even with limited space
 
 ### Color Legend
 
@@ -334,24 +361,38 @@ docker build --no-cache -t subnetviz:1.0.0 .
 
 ```
 .
-├── app.py                    # Flask backend API
-├── requirements.txt          # Python dependencies
-├── Dockerfile                # Multi-stage production build
-├── frontend/
-│   ├── package.json          # Node dependencies
-│   ├── src/
-│   │   ├── App.js           # Main React component
-│   │   ├── components/      # React components
-│   │   │   ├── About.js     # About dialog
-│   │   │   ├── IpVisualization.js
-│   │   │   ├── Statistics.js
-│   │   │   ├── SubnetList.js
-│   │   │   └── ...
-│   │   └── utils/api.js     # API utilities
-│   └── build/               # Production build output
+├── app.py                           # Flask backend API (VPC/subnet/IP data)
+├── requirements.txt                 # Python dependencies
+├── Dockerfile                       # Multi-stage production build
+├── README.md                        # This file
+├── LICENSE                          # MIT License
 ├── img/
-│   └── subnetviz-screen.png  # Screenshot
-└── README.md                 # This file
+│   └── subnetviz-screen.png         # UI screenshot
+├── frontend/
+│   ├── package.json                 # Node.js dependencies
+│   ├── package-lock.json            # Locked npm versions
+│   ├── public/
+│   │   ├── index.html               # HTML entry point
+│   │   ├── favicon.ico              # App icon
+│   │   └── manifest.json            # PWA manifest
+│   ├── src/
+│   │   ├── App.js                   # Main React component
+│   │   ├── App.css                  # App styling
+│   │   ├── index.js                 # React entry point
+│   │   ├── components/
+│   │   │   ├── About.js             # About dialog
+│   │   │   ├── IpVisualization.js   # IP grid visualization
+│   │   │   ├── IpVisualization.css  # IP grid styling
+│   │   │   ├── RegionSelector.js    # Region dropdown
+│   │   │   ├── Statistics.js        # IP stats panel
+│   │   │   ├── Statistics.css       # Stats styling
+│   │   │   ├── SubnetList.js        # Subnet list with filters & sorts
+│   │   │   ├── SubnetList.css       # Subnet list styling
+│   │   │   ├── VpcSelector.js       # VPC dropdown
+│   │   │   └── ...
+│   │   └── utils/
+│   │       └── api.js               # API client utilities
+└── .gitignore                       # Git ignore rules
 ```
 
 ### Local Development Setup
@@ -467,6 +508,8 @@ Initial release with:
 - Docker containerization
 - Dark/light theme
 - Production-ready security and error handling
+- Advanced Sort Options: By subnet tags, CIDR range (address or size)
+- Advanced Filters: By IP address (containment check), tag values
 
 ---
 

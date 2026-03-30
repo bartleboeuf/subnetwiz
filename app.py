@@ -774,6 +774,9 @@ def get_subnets(vpc_id):
         name = next((tag['Value'] for tag in subnet.get('Tags', [])
                     if tag['Key'] == 'Name'), subnet_id)
 
+        # Extract all tags from the subnet
+        tags = [{'key': tag['Key'], 'value': tag['Value']} for tag in subnet.get('Tags', [])]
+
         # Prepare all IP data for this subnet
         ip_data = prepare_ip_data_for_subnet(ec2_client, subnet_id, subnet, enis_response)
         cidr_block = ip_data['cidr_block']
@@ -814,6 +817,7 @@ def get_subnets(vpc_id):
         subnets.append({
             'id': subnet_id,
             'name': name,
+            'tags': tags,
             'cidr': cidr_block,
             'availabilityZone': subnet['AvailabilityZone'],
             'totalIps': total_ips,
