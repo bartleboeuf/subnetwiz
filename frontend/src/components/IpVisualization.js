@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { FixedSizeGrid as Grid } from 'react-window';
 import './IpVisualization.css';
 
@@ -9,11 +9,32 @@ function IpVisualization({ ipData }) {
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [gridWidth, setGridWidth] = useState(0);
   const [processedIps, setProcessedIps] = useState([]);
-  const [processingProgress, setProcessingProgress] = useState(0);
   const [copyFeedback, setCopyFeedback] = useState(null);
   const containerRef = useRef(null);
-  const workerRef = useRef(null);
   const feedbackTimeoutRef = useRef(null);
+
+  // Memoize color mapping function
+  const getIpColor = useCallback((ip) => {
+    switch (ip.status) {
+      case 'used':
+        if (ip.details?.type === 'primary') return '#3b82f6';
+        if (ip.details?.type === 'secondary') return '#06b6d4';
+        if (ip.details?.type === 'prefix_delegation') return '#8b5cf6';
+        return '#3b82f6';
+      case 'reserved':
+        return '#9ca3af';
+      case 'cidr_reservation':
+        if (ip.details?.type === 'explicit') return '#f59e0b';
+        if (ip.details?.type === 'prefix') return '#f97316';
+        return '#f59e0b';
+      case 'free':
+        return '#f3f4f6';
+      default:
+        return '#f3f4f6';
+    }
+  }, []);
+
+  const getIpLabel = useCallback((ip) => ip.ip.split('.').pop(), []);
 
   // Cleanup feedback timeout on unmount
   useEffect(() => {
@@ -52,20 +73,16 @@ function IpVisualization({ ipData }) {
   useEffect(() => {
     if (!ipData || !ipData.ips) {
       setProcessedIps([]);
-      setProcessingProgress(0);
       return;
     }
 
     let isMounted = true;
     let timeoutIds = [];
 
-    const COLS = 32;
     const ips = ipData.ips;
     const CHUNK_SIZE = 5000; // Process 5K IPs at a time
     const totalIps = ips.length;
     const processedIps = [];
-
-    setProcessingProgress(0);
 
     // Process in chunks with async scheduling to prevent UI blocking
     const processChunk = (startIndex) => {
@@ -84,12 +101,6 @@ function IpVisualization({ ipData }) {
         });
       }
 
-      // Update progress
-      const progress = Math.round((endIndex / totalIps) * 100);
-      if (isMounted) {
-        setProcessingProgress(progress);
-      }
-
       // Continue with next chunk if there's more to process
       if (endIndex < totalIps) {
         const timeoutId = setTimeout(() => processChunk(endIndex), 10);
@@ -98,7 +109,6 @@ function IpVisualization({ ipData }) {
         // Done processing
         if (isMounted) {
           setProcessedIps(processedIps);
-          setProcessingProgress(100);
         }
       }
     };
@@ -111,30 +121,7 @@ function IpVisualization({ ipData }) {
       isMounted = false;
       timeoutIds.forEach(id => clearTimeout(id));
     };
-  }, [ipData]);
-
-  // Memoize color mapping function
-  const getIpColor = useCallback((ip) => {
-    switch (ip.status) {
-      case 'used':
-        if (ip.details?.type === 'primary') return '#3b82f6';
-        if (ip.details?.type === 'secondary') return '#06b6d4';
-        if (ip.details?.type === 'prefix_delegation') return '#8b5cf6';
-        return '#3b82f6';
-      case 'reserved':
-        return '#9ca3af';
-      case 'cidr_reservation':
-        if (ip.details?.type === 'explicit') return '#f59e0b';
-        if (ip.details?.type === 'prefix') return '#f97316';
-        return '#f59e0b';
-      case 'free':
-        return '#f3f4f6';
-      default:
-        return '#f3f4f6';
-    }
-  }, []);
-
-  const getIpLabel = useCallback((ip) => ip.ip.split('.').pop(), []);
+  }, [ipData, getIpColor, getIpLabel]);
 
   // Format IP details for clipboard
   const formatIpDetails = useCallback((ip) => {
@@ -163,6 +150,9 @@ function IpVisualization({ ipData }) {
     } else if (ip.status === 'reserved' && ip.details) {
       if (ip.details.reason) {
         details += `\nReason: ${ip.details.reason}`;
+      }
+      if (ip.details.description) {
+        details += `\nPurpose: ${ip.details.description}`;
       }
     } else if (ip.status === 'cidr_reservation' && ip.details) {
       details += `\nReservation Type: ${ip.details.type}`;
@@ -401,10 +391,18 @@ function IpVisualization({ ipData }) {
               </>
             )}
             {hoveredIp.status === 'reserved' && hoveredIp.details && (
-              <div className="tooltip-row">
-                <span>Reason:</span>
-                <span>{hoveredIp.details.reason}</span>
-              </div>
+              <>
+                <div className="tooltip-divider" />
+                <div className="tooltip-row">
+                  <span>Reserved For:</span>
+                  <span>{hoveredIp.details.reason}</span>
+                </div>
+                {hoveredIp.details.description && (
+                  <div className="tooltip-row reserved-detail">
+                    <span style={{ display: 'block', width: '100%' }}>{hoveredIp.details.description}</span>
+                  </div>
+                )}
+              </>
             )}
             {hoveredIp.status === 'cidr_reservation' && hoveredIp.details && (
               <>

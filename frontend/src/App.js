@@ -6,6 +6,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import RegionSelector from './components/RegionSelector';
 import VpcSelector from './components/VpcSelector';
 import SubnetList from './components/SubnetList';
+import FilterPanel from './components/FilterPanel';
 import About from './components/About';
 
 // Theme context
@@ -30,8 +31,6 @@ const LoadingPlaceholder = () => (
     <h3>Loading visualization...</h3>
   </div>
 );
-
-const API_URL = process.env.REACT_APP_API_URL || '';
 
 function App() {
   // Theme state (light by default)
@@ -67,6 +66,20 @@ function App() {
   const [ipPaginationInfo, setIpPaginationInfo] = useState(null);
   const [error, setError] = useState(null);
   const [accountInfo, setAccountInfo] = useState(null);
+
+  // Filter state
+  const [filters, setFilters] = useState({
+    searchText: '',
+    selectedAZs: [],
+    minUtilization: 0,
+    maxUtilization: 100,
+    selectedFragmentationLevels: ['Low', 'Moderate', 'High'],
+    selectedTagFilters: {},
+    filterByIP: '',
+  });
+
+  // Filter panel visibility state (collapsed by default)
+  const [filterPanelExpanded, setFilterPanelExpanded] = useState(false);
 
   // Abort controllers for canceling pending requests
   const vpcAbortRef = useRef(null);
@@ -159,7 +172,7 @@ function App() {
     })();
 
     pendingRef.current.vpcs = { region: cacheKey, promise };
-  }, [selectedRegion]);
+  }, [selectedRegion, CACHE_TTL]);
 
   const fetchSubnets = useCallback(async (vpcId) => {
     if (!selectedRegion) return;
@@ -212,7 +225,7 @@ function App() {
     })();
 
     pendingRef.current.subnets = { key: cacheKey, promise };
-  }, [selectedRegion]);
+  }, [selectedRegion, CACHE_TTL]);
 
   const fetchIpData = useCallback(async (subnetId, usePagination = false, offset = 0) => {
     if (!selectedRegion) return;
@@ -333,7 +346,7 @@ function App() {
     if (isFirstPage) {
       pendingRef.current.ips = { key: cacheKey, promise };
     }
-  }, [selectedRegion]);
+  }, [selectedRegion, CACHE_TTL]);
 
   // Fetch regions on mount
   useEffect(() => {
@@ -475,13 +488,28 @@ function App() {
         </div>
 
         {selectedVpc && (
-          <div className="main-content">
-            <div className="left-panel">
+          <div className={`main-content ${filterPanelExpanded ? 'filters-expanded' : 'filters-collapsed'}`}>
+            {filterPanelExpanded && (
+              <div className="filter-sidebar">
+                <FilterPanel
+                  subnets={subnets}
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  isExpanded={filterPanelExpanded}
+                />
+              </div>
+            )}
+
+            <div className="middle-panel">
               <SubnetList
                 subnets={subnets}
                 selectedSubnet={selectedSubnet}
                 onSelect={setSelectedSubnet}
                 loading={loading}
+                filters={filters}
+                onFiltersChange={setFilters}
+                filterPanelExpanded={filterPanelExpanded}
+                onToggleFilterPanel={() => setFilterPanelExpanded(!filterPanelExpanded)}
               />
             </div>
 

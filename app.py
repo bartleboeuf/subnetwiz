@@ -501,11 +501,38 @@ def build_ip_map(network, ip_details_map, reserved_ips, cidr_reservation_ips, of
         ip_list = ip_list[offset:offset + limit]
 
     ip_map = []
+    # Get network address for calculating IP position within subnet
+    network_addr_int = int(network.network_address)
+    broadcast_addr_int = int(network.broadcast_address)
+
     for ip in ip_list:
         ip_str = str(ip)
         if ip_str in reserved_ips:
             status = 'reserved'
-            details = {'reason': 'AWS Reserved', 'type': 'aws_reserved'}
+            # Calculate IP position relative to network address (not just last octet)
+            ip_int = int(ip)
+            ip_offset = ip_int - network_addr_int
+            subnet_size = int(network.broadcast_address) - int(network.network_address)
+
+            if ip_offset == 0:
+                reason = 'Network Address'
+                description = 'First address in subnet. Reserved by AWS.'
+            elif ip_offset == 1:
+                reason = 'VPC Router'
+                description = 'Reserved for VPC router (default gateway). Reserved by AWS.'
+            elif ip_offset == 2:
+                reason = 'DNS Server'
+                description = 'Reserved for Amazon DNS server. IP is base of VPC network range plus two. Reserved by AWS.'
+            elif ip_offset == 3:
+                reason = 'Reserved for Future Use'
+                description = 'Reserved by AWS for future use.'
+            elif ip_int == broadcast_addr_int:
+                reason = 'Network Broadcast Address'
+                description = 'Broadcast address. AWS does not support broadcast in VPCs. Reserved by AWS.'
+            else:
+                reason = 'AWS Reserved'
+                description = 'Reserved by AWS.'
+            details = {'reason': reason, 'description': description, 'type': 'aws_reserved'}
         elif ip_str in ip_details_map:
             status = 'used'
             details = ip_details_map[ip_str]

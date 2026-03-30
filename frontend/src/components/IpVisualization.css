@@ -417,3 +417,35 @@
     justify-content: flex-start;
   }
 }
+
+/* Reserved IP details styling */
+.tooltip-row.reserved-detail {
+  background: rgba(156, 163, 175, 0.1);
+  border-left: 3px solid #9ca3af;
+  padding: 0.65rem;
+  border-radius: 6px;
+  margin-top: 0.5rem;
+  display: block;
+  overflow: hidden;
+}
+
+.tooltip-row.reserved-detail > span {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #cbd5e1;
+  font-weight: 400;
+  display: block;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  max-width: 100%;
+}
+
+[data-theme="light"] .tooltip-row.reserved-detail {
+  background: rgba(217, 119, 6, 0.05);
+  border-left-color: #f59e0b;
+}
+
+[data-theme="light"] .tooltip-row.reserved-detail > span {
+  color: #57606a;
+}

@@ -87,36 +87,32 @@ const SubnetItem = React.memo(({ subnet, isSelected, onSelect }) => {
 
 SubnetItem.displayName = 'SubnetItem';
 
-function SubnetList({ subnets, selectedSubnet, onSelect, loading }) {
+function SubnetList({
+  subnets,
+  selectedSubnet,
+  onSelect,
+  loading,
+  filters,
+  onFiltersChange,
+  filterPanelExpanded,
+  onToggleFilterPanel
+}) {
   const [sortBy, setSortBy] = useState('utilization'); // Sort by utilization by default
-  const [filtersExpanded, setFiltersExpanded] = useState(false); // Filters collapsed by default
-
-  // Filter state
-  const [searchText, setSearchText] = useState('');
-  const [selectedAZs, setSelectedAZs] = useState([]);
-  const [minUtilization, setMinUtilization] = useState(0);
-  const [maxUtilization, setMaxUtilization] = useState(100);
-  const [selectedFragmentationLevels, setSelectedFragmentationLevels] = useState(['Low', 'Moderate', 'High']);
 
   // Sort state for Phase 15
   const [tagSortKey, setTagSortKey] = useState(null); // null = no tag sort
   const [cidrSortType, setCidrSortType] = useState('address'); // 'address' or 'size'
 
-  // Filter state for Phase 15.3
-  const [selectedTagFilters, setSelectedTagFilters] = useState({}); // { tagKey: [values] }
-
-  // Filter state for Phase 15.4
-  const [filterByIP, setFilterByIP] = useState('');
-  const [ipFilterError, setIpFilterError] = useState('');
-
-  // Tag filter UI state for condensed display
-  const [collapsedTags, setCollapsedTags] = useState({}); // { tagKey: isCollapsed }
-
-  // Extract unique availability zones from subnets
-  const uniqueAZs = useMemo(() => {
-    const azSet = new Set(subnets.map(s => s.availabilityZone));
-    return Array.from(azSet).sort();
-  }, [subnets]);
+  // Extract filter values from props
+  const {
+    searchText = '',
+    selectedAZs = [],
+    minUtilization = 0,
+    maxUtilization = 100,
+    selectedFragmentationLevels = ['Low', 'Moderate', 'High'],
+    selectedTagFilters = {},
+    filterByIP = '',
+  } = filters || {};
 
   // Extract unique tag keys from subnets (Phase 15)
   const availableTagKeys = useMemo(() => {
@@ -125,22 +121,6 @@ function SubnetList({ subnets, selectedSubnet, onSelect, loading }) {
       subnet.tags?.forEach(tag => keys.add(tag.key));
     });
     return Array.from(keys).sort();
-  }, [subnets]);
-
-  // Extract unique tag values by tag key (Phase 15.3)
-  const availableTagValues = useMemo(() => {
-    const tagMap = {};
-    subnets.forEach(subnet => {
-      subnet.tags?.forEach(tag => {
-        if (!tagMap[tag.key]) tagMap[tag.key] = new Set();
-        tagMap[tag.key].add(tag.value);
-      });
-    });
-    // Convert Sets to sorted arrays
-    Object.keys(tagMap).forEach(key => {
-      tagMap[key] = Array.from(tagMap[key]).sort();
-    });
-    return tagMap;
   }, [subnets]);
 
   // Helper to parse CIDR blocks (Phase 15.2)
@@ -153,22 +133,26 @@ function SubnetList({ subnets, selectedSubnet, onSelect, loading }) {
     }
   };
 
-  // Helper to validate IP address (Phase 15.4)
-  const isValidIP = (ipString) => {
-    try {
-      const ip = new Address4(ipString);
-      return ip.isCorrect();
-    } catch {
-      return false;
-    }
-  };
-
   // Helper to check if subnet contains IP (Phase 15.4)
   const subnetContainsIP = (cidrString, ipString) => {
     try {
       const subnet = new Address4(cidrString);
       const ip = new Address4(ipString);
       return ip.isInSubnet(subnet);
+    } catch {
+      return false;
+    }
+  };
+
+  // Helper to validate IP address (Phase 15.4)
+  const isValidIP = (ipString) => {
+    try {
+      const parts = ipString.split('.');
+      if (parts.length !== 4) return false;
+      return parts.every(part => {
+        const num = parseInt(part, 10);
+        return num >= 0 && num <= 255;
+      });
     } catch {
       return false;
     }
@@ -263,51 +247,6 @@ function SubnetList({ subnets, selectedSubnet, onSelect, loading }) {
     return sorted;
   }, [filteredSubnets, sortBy, tagSortKey, cidrSortType]);
 
-  // Handle AZ filter toggle
-  const toggleAZ = useCallback((az) => {
-    setSelectedAZs(prev =>
-      prev.includes(az) ? prev.filter(a => a !== az) : [...prev, az]
-    );
-  }, []);
-
-  // Handle fragmentation level toggle
-  const toggleFragmentationLevel = useCallback((level) => {
-    setSelectedFragmentationLevels(prev =>
-      prev.includes(level) ? prev.filter(l => l !== level) : [...prev, level]
-    );
-  }, []);
-
-  // Handle tag filter toggle (Phase 15.3)
-  const toggleTagFilter = useCallback((tagKey, value) => {
-    setSelectedTagFilters(prev => {
-      const current = prev[tagKey] || [];
-      const updated = current.includes(value)
-        ? current.filter(v => v !== value)
-        : [...current, value];
-      return { ...prev, [tagKey]: updated };
-    });
-  }, []);
-
-  // Handle tag section collapse toggle
-  const toggleTagCollapse = useCallback((tagKey) => {
-    setCollapsedTags(prev => ({
-      ...prev,
-      [tagKey]: !prev[tagKey]
-    }));
-  }, []);
-
-  // Reset all filters
-  const resetFilters = useCallback(() => {
-    setSearchText('');
-    setSelectedAZs([]);
-    setMinUtilization(0);
-    setMaxUtilization(100);
-    setSelectedFragmentationLevels(['Low', 'Moderate', 'High']);
-    setSelectedTagFilters({});
-    setFilterByIP('');
-    setIpFilterError('');
-    setCollapsedTags({});
-  }, []);
 
   // Item renderer for virtualized list
   const Row = useCallback(({ index, style }) => {
@@ -353,18 +292,18 @@ function SubnetList({ subnets, selectedSubnet, onSelect, loading }) {
   return (
     <div className="subnet-list">
       <div className="subnet-list-header">
-        <h3>Subnets ({filteredSubnets.length}/{subnets.length})</h3>
-        <div className="header-controls">
+        <div className="header-title">
+          <h3>Subnets ({filteredSubnets.length}/{subnets.length})</h3>
           <button
-            className="toggle-filters-btn"
-            onClick={() => setFiltersExpanded(!filtersExpanded)}
-            title={filtersExpanded ? 'Collapse filters' : 'Expand filters'}
-            aria-expanded={filtersExpanded}
-            aria-label="Toggle filters"
+            className="filter-toggle-btn"
+            onClick={onToggleFilterPanel}
+            title={filterPanelExpanded ? 'Hide filters' : 'Show filters'}
+            aria-label="Toggle filter panel"
           >
-            <span className="filter-icon">⚙️</span>
-            <span className={`toggle-arrow ${filtersExpanded ? 'expanded' : ''}`}>▼</span>
+            <span className="filter-wheel-icon">⚙️</span>
           </button>
+        </div>
+        <div className="header-controls">
           <select
             className="sort-select"
             value={sortBy}
@@ -402,145 +341,6 @@ function SubnetList({ subnets, selectedSubnet, onSelect, loading }) {
             </select>
           )}
         </div>
-      </div>
-
-      {/* Filter Panel */}
-      <div className={`filter-panel ${filtersExpanded ? 'expanded' : 'collapsed'}`}>
-        <div className="filter-section">
-          <label>Search:</label>
-          <input
-            type="text"
-            className="filter-input search-input"
-            placeholder="Subnet name..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-          />
-        </div>
-
-        <div className="filter-section">
-          <label>IP Address:</label>
-          <input
-            type="text"
-            className="filter-input"
-            placeholder="e.g., 10.0.0.50"
-            value={filterByIP}
-            onChange={(e) => {
-              const val = e.target.value;
-              setFilterByIP(val);
-              if (val && !isValidIP(val)) {
-                setIpFilterError('Invalid IP address format');
-              } else {
-                setIpFilterError('');
-              }
-            }}
-          />
-          {ipFilterError && <span className="filter-error">{ipFilterError}</span>}
-        </div>
-
-        <div className="filter-section">
-          <label>Availability Zone:</label>
-          <div className="filter-checkboxes filter-checkboxes-grid-2col">
-            {uniqueAZs.map(az => (
-              <label key={az} className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={selectedAZs.length === 0 || selectedAZs.includes(az)}
-                  onChange={() => {
-                    if (selectedAZs.length === 0 || selectedAZs.includes(az)) {
-                      if (selectedAZs.length === uniqueAZs.length - 1) {
-                        setSelectedAZs([]);
-                      } else {
-                        toggleAZ(az);
-                      }
-                    } else {
-                      toggleAZ(az);
-                    }
-                  }}
-                />
-                {az}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div className="filter-section">
-          <label>Utilization: {minUtilization}% - {maxUtilization}%</label>
-          <div className="filter-range">
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={minUtilization}
-              onChange={(e) => setMinUtilization(Math.min(Number(e.target.value), maxUtilization))}
-              className="range-input"
-            />
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={maxUtilization}
-              onChange={(e) => setMaxUtilization(Math.max(Number(e.target.value), minUtilization))}
-              className="range-input"
-            />
-          </div>
-        </div>
-
-        <div className="filter-section">
-          <label>Fragmentation Level:</label>
-          <div className="filter-checkboxes filter-checkboxes-inline">
-            {['Low', 'Moderate', 'High'].map(level => (
-              <label key={level} className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={selectedFragmentationLevels.includes(level)}
-                  onChange={() => toggleFragmentationLevel(level)}
-                />
-                {level}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {Object.keys(availableTagValues).length > 0 && (
-          <div className="filter-section filter-tags-section">
-            <h4>Tags</h4>
-            <div className="filter-tags-scroll">
-              {Object.entries(availableTagValues).map(([tagKey, tagValues]) => (
-                <div key={tagKey} className="filter-tag-group">
-                  <button
-                    className="tag-collapse-btn"
-                    onClick={() => toggleTagCollapse(tagKey)}
-                    aria-expanded={!collapsedTags[tagKey]}
-                  >
-                    <span className={`collapse-arrow ${collapsedTags[tagKey] ? 'collapsed' : ''}`}>▼</span>
-                    {tagKey}
-                    {selectedTagFilters[tagKey]?.length > 0 && (
-                      <span className="tag-filter-badge">{selectedTagFilters[tagKey].length}</span>
-                    )}
-                  </button>
-                  {!collapsedTags[tagKey] && (
-                    <div className="filter-checkboxes tag-values">
-                      {tagValues.map(value => (
-                        <label key={value} className="checkbox-label">
-                          <input
-                            type="checkbox"
-                            checked={selectedTagFilters[tagKey]?.includes(value) || false}
-                            onChange={() => toggleTagFilter(tagKey, value)}
-                          />
-                          {value}
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <button className="reset-filters-btn" onClick={resetFilters}>
-          Clear Filters
-        </button>
       </div>
 
       {useVirtualization ? (
