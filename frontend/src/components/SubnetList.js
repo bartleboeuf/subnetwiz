@@ -68,7 +68,7 @@ const SubnetItem = React.memo(({ subnet, isSelected, onSelect }) => {
           ))}
         </div>
       )}
-      <div className="fragmentation-score">
+      <div className="fragmentation-score" title="Based on actual ENI allocations only. CIDR reservations don't affect this score.">
         <span className="frag-label">Fragmentation:</span>
         <div className="frag-bar-container">
           <div

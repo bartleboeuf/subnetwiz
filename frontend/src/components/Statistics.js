@@ -195,20 +195,34 @@ function Statistics({ subnet, ipData }) {
               <span>Prefix Delegation:</span>
               <strong>{subnet.prefixDelegationIps}</strong>
             </div>
+            {subnet.cidrReservationIps > 0 && (
+              <div className="stat-row">
+                <span>CIDR Reservations:</span>
+                <strong>{subnet.cidrReservationIps}</strong>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="stat-card fragmentation-card" style={{ borderColor: fragInfo.color }}>
           <div className="stat-card-header" style={{ backgroundColor: fragInfo.color }}>
             Fragmentation Analysis
+            <span className="frag-info-tooltip" title="Based on actual ENI allocations (primary, secondary, and prefix delegation IPs). CIDR reservations are intentional reserves and don't affect this score.">ⓘ</span>
           </div>
           <div className="stat-card-body">
             <div className="frag-score" style={{ color: fragInfo.color }}>
               <span className="frag-score-value">{subnet.fragmentationScore.toFixed(1)}</span>
               <span className="frag-score-label">{fragInfo.level}</span>
             </div>
+            <div className="frag-description">
+              <small>Measures allocation efficiency for /28 prefix blocks (EKS). Based on gaps between actual ENI IPs.</small>
+            </div>
             {subnet.fragmentationDetails && (
               <>
+                <div className="stat-row">
+                  <span>Usable /28 Blocks:</span>
+                  <strong>{subnet.fragmentationDetails.usable_prefixes}</strong>
+                </div>
                 <div className="stat-row">
                   <span>Number of Gaps:</span>
                   <strong>{subnet.fragmentationDetails.num_gaps}</strong>
@@ -249,6 +263,29 @@ function Statistics({ subnet, ipData }) {
           <code>{subnet.availabilityZone}</code>
         </div>
       </div>
+
+      {subnet.cidrReservations && subnet.cidrReservations.length > 0 && (
+        <div className="cidr-reservations-section">
+          <h4>CIDR Reservations (Intentional Reserves)</h4>
+          <p className="section-description">
+            These are intentionally reserved blocks. They don't affect the fragmentation score,
+            which measures actual allocation efficiency.
+          </p>
+          <div className="reservations-list">
+            {subnet.cidrReservations.map((resv) => (
+              <div key={resv.reservationId} className="reservation-detail">
+                <div className="reservation-block">
+                  <span className="reservation-cidr-label">{resv.cidr}</span>
+                  <span className="reservation-type-badge">{resv.type}</span>
+                </div>
+                {resv.description && (
+                  <div className="reservation-description">{resv.description}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

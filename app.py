@@ -607,11 +607,8 @@ def calculate_fragmentation(used_ips, total_ips, available_count):
     # Calculate how many /28 prefixes COULD be allocated if perfectly contiguous
     theoretical_prefixes = available_count // PREFIX_SIZE
 
-    # Calculate wasted IPs (IPs in fragments too small for /28)
-    wasted_ips = sum(block % PREFIX_SIZE if block < PREFIX_SIZE else 0
-                     for block in all_free_blocks)
-    # Add the remainder IPs from blocks that can fit prefixes
-    wasted_ips += sum(block % PREFIX_SIZE for block in all_free_blocks if block >= PREFIX_SIZE)
+    # Calculate wasted IPs (remainder IPs in all free blocks after fitting /28 prefixes)
+    wasted_ips = sum(block % PREFIX_SIZE for block in all_free_blocks)
 
     logger.debug(f"Gaps: {len(gaps)} gaps totaling {total_gap_ips} IPs")
     logger.debug(f"Free blocks: {sorted(all_free_blocks, reverse=True)[:5]}")
@@ -821,12 +818,12 @@ def get_subnets(vpc_id):
         ip_details = subnet_ip_details.get(subnet_id, [])
         used_ips = [ip_info['ip'] for ip_info in ip_details]
         cidr_reservations_list = list(cidr_reservation_ips.keys())
-        all_unavailable_ips = used_ips + cidr_reservations_list
 
-        # Calculate fragmentation
+        # Calculate fragmentation based only on actual ENI allocations
+        # (CIDR reservations are intentional reserves, not fragmentation)
         logger.info(f"=== Calculating fragmentation for subnet: {name} ({subnet_id}) ===")
         frag_score, frag_details = calculate_fragmentation(
-            all_unavailable_ips, total_ips, available_ips
+            used_ips, total_ips, available_ips
         )
 
         # Count different IP types (single pass optimization)
