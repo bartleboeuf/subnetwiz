@@ -66,6 +66,7 @@ function App() {
   const [ipPaginationInfo, setIpPaginationInfo] = useState(null);
   const [error, setError] = useState(null);
   const [accountInfo, setAccountInfo] = useState(null);
+  const [isDataCached, setIsDataCached] = useState(false);
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -85,6 +86,8 @@ function App() {
   const vpcAbortRef = useRef(null);
   const subnetAbortRef = useRef(null);
   const ipDataAbortRef = useRef(null);
+  const paginationTimeoutsRef = useRef([]);
+  const cachedBadgeTimeoutRef = useRef(null);
 
   // Cache for API responses (40-60% fewer API calls)
   const cacheRef = useRef({
@@ -131,6 +134,7 @@ function App() {
     // Check if cached data is still valid
     if (cache && (now - cache.timestamp) < CACHE_TTL) {
       setVpcs(cache.data);
+      setIsDataCached(true);
       return;
     }
 
@@ -147,6 +151,7 @@ function App() {
 
     setLoading(true);
     setError(null);
+    setIsDataCached(false);
 
     const promise = (async () => {
       try {
@@ -184,6 +189,7 @@ function App() {
     // Check if cached data is still valid
     if (cache && (now - cache.timestamp) < CACHE_TTL) {
       setSubnets(cache.data);
+      setIsDataCached(true);
       return;
     }
 
@@ -200,6 +206,7 @@ function App() {
 
     setLoading(true);
     setError(null);
+    setIsDataCached(false);
 
     const promise = (async () => {
       try {
@@ -235,6 +242,10 @@ function App() {
     const now = Date.now();
     const PAGE_SIZE = 5000;
 
+    // Capture current region/subnet for later validation
+    const fetchRegionId = selectedRegion.id;
+    const fetchSubnetId = subnetId;
+
     // Check if cached data is still valid (only for non-paginated requests)
     if (!usePagination && cache && (now - cache.timestamp) < CACHE_TTL) {
       setIpData(cache.data);
@@ -265,10 +276,10 @@ function App() {
       try {
         // Choose endpoint based on whether using pagination
         const endpoint = usePagination
-          ? `/api/subnet/${subnetId}/ips/paginated`
-          : `/api/subnet/${subnetId}/ips`;
+          ? `/api/subnet/${fetchSubnetId}/ips/paginated`
+          : `/api/subnet/${fetchSubnetId}/ips`;
 
-        const params = { region: selectedRegion.id };
+        const params = { region: fetchRegionId };
         if (usePagination) {
           params.offset = offset;
           params.limit = PAGE_SIZE;
@@ -303,7 +314,8 @@ function App() {
             // Load subsequent pages in background if there are more
             if (data.totalIps > PAGE_SIZE) {
               for (let nextOffset = PAGE_SIZE; nextOffset < data.totalIps; nextOffset += PAGE_SIZE) {
-                setTimeout(() => fetchIpData(subnetId, true, nextOffset), 200);
+                const timeoutId = setTimeout(() => fetchIpData(subnetId, true, nextOffset), 200);
+                paginationTimeoutsRef.current.push(timeoutId);
               }
             }
           } else {
@@ -329,8 +341,12 @@ function App() {
           setIpPaginationInfo(null);
         }
       } catch (err) {
-        // Don't set error if request was aborted (region changed)
-        if (err.name !== 'AbortError') {
+        // Don't set error if:
+        // 1. Request was aborted (region/subnet changed)
+        // 2. Region or subnet changed since fetch started
+        // 3. Invalid subnet error (likely region changed)
+        const isInvalidSubnetError = err.message?.includes('InvalidSubnetID') || err.message?.includes('does not exist');
+        if (err.name !== 'AbortError' && !isInvalidSubnetError && selectedRegion?.id === fetchRegionId && selectedSubnet?.id === fetchSubnetId) {
           setError('Failed to fetch IP data: ' + err.message);
         }
       } finally {
@@ -339,6 +355,8 @@ function App() {
           pendingRef.current.ips = null;
         } else {
           setLoadingMoreIps(false);
+          // Remove this timeout from tracking once pagination completes
+          paginationTimeoutsRef.current = paginationTimeoutsRef.current.filter(id => id !== null);
         }
       }
     })();
@@ -346,7 +364,7 @@ function App() {
     if (isFirstPage) {
       pendingRef.current.ips = { key: cacheKey, promise };
     }
-  }, [selectedRegion, CACHE_TTL]);
+  }, [selectedRegion, selectedSubnet, CACHE_TTL]);
 
   // Fetch regions on mount
   useEffect(() => {
@@ -367,8 +385,19 @@ function App() {
     fetchAccountInfo();
   }, []);
 
-  // Abort all pending requests when region changes
+  // Abort all pending requests and clear error when region changes
   useEffect(() => {
+    // Clear error and selections immediately when region changes
+    setError(null);
+    setSelectedVpc(null);
+    setSelectedSubnet(null);
+    setIpData(null);
+    setSubnets([]);
+
+    // Cancel all pending pagination timeouts
+    paginationTimeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
+    paginationTimeoutsRef.current = [];
+
     return () => {
       if (vpcAbortRef.current) {
         vpcAbortRef.current.abort();
@@ -388,10 +417,6 @@ function App() {
       fetchVpcs();
     } else {
       setVpcs([]);
-      setSelectedVpc(null);
-      setSubnets([]);
-      setSelectedSubnet(null);
-      setIpData(null);
     }
   }, [selectedRegion, fetchVpcs]);
 
@@ -417,6 +442,24 @@ function App() {
       setIpPaginationInfo(null);
     }
   }, [selectedSubnet, fetchIpData]);
+
+  // Hide cached badge after 3 seconds
+  useEffect(() => {
+    if (isDataCached) {
+      if (cachedBadgeTimeoutRef.current) {
+        clearTimeout(cachedBadgeTimeoutRef.current);
+      }
+      cachedBadgeTimeoutRef.current = setTimeout(() => {
+        setIsDataCached(false);
+      }, 3000);
+    }
+
+    return () => {
+      if (cachedBadgeTimeoutRef.current) {
+        clearTimeout(cachedBadgeTimeoutRef.current);
+      }
+    };
+  }, [isDataCached]);
 
   const handleRefresh = () => {
     if (selectedVpc) {
@@ -481,9 +524,14 @@ function App() {
             loading={loading}
           />
           {selectedVpc && (
-            <button className="refresh-button" onClick={handleRefresh}>
-              Refresh
-            </button>
+            <div className="refresh-section">
+              <button className="refresh-button" onClick={handleRefresh} title={isDataCached ? 'Data is from cache (5 min TTL) - click to refresh' : 'Refresh data'} disabled={loading}>
+                🔄
+              </button>
+              {isDataCached && (
+                <span className="cached-badge" title="Data is cached - click refresh to fetch latest">📦 Cached</span>
+              )}
+            </div>
           )}
         </div>
 
