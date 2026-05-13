@@ -55,12 +55,17 @@ function Statistics({ subnet, ipData }) {
 
   // Find first free IP in subnet
   const firstFreeIp = useMemo(() => {
-    if (!ipData || !ipData.ips || ipData.ips.length === 0) {
+    try {
+      if (!ipData || !Array.isArray(ipData.ips) || ipData.ips.length === 0) {
+        return 'N/A';
+      }
+
+      const freeIp = ipData.ips.find(ip => ip && ip.status === 'free');
+      return freeIp ? freeIp.ip : 'None';
+    } catch (error) {
+      console.error('Error finding first free IP:', error);
       return 'N/A';
     }
-
-    const freeIp = ipData.ips.find(ip => ip.status === 'free');
-    return freeIp ? freeIp.ip : 'None';
   }, [ipData]);
 
   // Handle copy first free IP

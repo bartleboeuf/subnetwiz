@@ -1,4 +1,4 @@
-# SubnetViz v1.0.0
+# SubnetViz v1.1.0
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -78,14 +78,14 @@ The application requires read-only EC2 access:
 
 ```bash
 # Build the image
-docker build -t subnetviz:1.0.0 .
+docker build -t subnetviz:1.1.0 .
 
 # Run locally with AWS credentials
 docker run -it --rm \
   -p 5000:5000 \
   -e AWS_DEFAULT_REGION=us-east-1 \
   -v ~/.aws:/root/.aws:ro \
-  subnetviz:1.0.0
+  subnetviz:1.1.0
 
 # Access the application
 # http://localhost:5000
@@ -98,7 +98,7 @@ docker run -it --rm \
   -e AWS_ACCESS_KEY_ID=your_key \
   -e AWS_SECRET_ACCESS_KEY=your_secret \
   -e AWS_DEFAULT_REGION=us-east-1 \
-  subnetviz:1.0.0
+  subnetviz:1.1.0
 ```
 
 ### Option 2: Local Development
@@ -133,10 +133,10 @@ The included `Dockerfile` uses multi-stage build for optimal production images:
 
 ```bash
 # Build for production
-docker build -t subnetviz:1.0.0 .
+docker build -t subnetviz:1.1.0 .
 
 # Test locally
-docker run -it --rm -p 5000:5000 -v ~/.aws:/root/.aws:ro subnetviz:1.0.0
+docker run -it --rm -p 5000:5000 -v ~/.aws:/root/.aws:ro subnetviz:1.1.0
 ```
 
 ### ECS / Fargate Deployment
@@ -343,16 +343,16 @@ Task role provides EC2 permissions automatically.
 docker ps
 
 # Rebuild image
-docker build --no-cache -t subnetviz:1.0.0 .
+docker build --no-cache -t subnetviz:1.1.0 .
 
 # Check logs
-docker run -it subnetviz:1.0.0
+docker run -it subnetviz:1.1.0
 ```
 
 **Frontend shows "Frontend not built yet"**
 ```bash
 # Rebuild Docker image
-docker build --no-cache -t subnetviz:1.0.0 .
+docker build --no-cache -t subnetviz:1.1.0 .
 ```
 
 ## Development
@@ -413,17 +413,17 @@ npm start
 
 ```bash
 # Build Docker image
-docker build -t subnetviz:1.0.0 .
+docker build -t subnetviz:1.1.0 .
 
 # Test production build
-docker run -it --rm -p 5000:5000 -v ~/.aws:/root/.aws:ro subnetviz:1.0.0
+docker run -it --rm -p 5000:5000 -v ~/.aws:/root/.aws:ro subnetviz:1.1.0
 
 # Push to ECR (example)
 aws ecr get-login-password --region us-east-1 | \
   docker login --username AWS --password-stdin 123456789.dkr.ecr.us-east-1.amazonaws.com
 
-docker tag subnetviz:1.0.0 123456789.dkr.ecr.us-east-1.amazonaws.com/subnetviz:1.0.0
-docker push 123456789.dkr.ecr.us-east-1.amazonaws.com/subnetviz:1.0.0
+docker tag subnetviz:1.1.0 123456789.dkr.ecr.us-east-1.amazonaws.com/subnetviz:1.1.0
+docker push 123456789.dkr.ecr.us-east-1.amazonaws.com/subnetviz:1.1.0
 ```
 
 ## Deployment Examples
@@ -441,7 +441,7 @@ docker push 123456789.dkr.ecr.us-east-1.amazonaws.com/subnetviz:1.0.0
   "containerDefinitions": [
     {
       "name": "subnetviz",
-      "image": "123456789.dkr.ecr.us-east-1.amazonaws.com/subnetviz:1.0.0",
+      "image": "123456789.dkr.ecr.us-east-1.amazonaws.com/subnetviz:1.1.0",
       "portMappings": [
         {
           "containerPort": 5000,
@@ -480,7 +480,7 @@ docker run -it --rm \
   -e AWS_PROFILE=my-profile \
   -e AWS_DEFAULT_REGION=us-east-1 \
   -v ~/.aws:/root/.aws:ro \
-  subnetviz:1.0.0
+  subnetviz:1.1.0
 
 # Using environment variables
 docker run -it --rm \
@@ -488,7 +488,7 @@ docker run -it --rm \
   -e AWS_ACCESS_KEY_ID=AKIA... \
   -e AWS_SECRET_ACCESS_KEY=... \
   -e AWS_DEFAULT_REGION=us-east-1 \
-  subnetviz:1.0.0
+  subnetviz:1.1.0
 ```
 
 ## License
@@ -497,7 +497,12 @@ MIT License - See LICENSE file for details.
 
 ## Version
 
-**v1.0.0** - March 2026
+**v1.1.0*** - May 2026
+
+- Bug fixes on react grid and list
+- Update dependencies on JS and Python
+
+**v1.0.0*** - March 2026
 
 Initial release with:
 - VPC/subnet visualization and filtering

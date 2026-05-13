@@ -337,7 +337,8 @@ def validate_pagination_params(request_args):
 def prepare_ip_data_for_subnet(ec2_client, subnet_id, subnet, enis_response):
     """Process ENIs and prepare all IP data structures in one call"""
     cidr_block = subnet['CidrBlock']
-    subnet_ip_details = get_all_eni_ips(enis_response['NetworkInterfaces'])
+    network_interfaces = enis_response.get('NetworkInterfaces', []) if enis_response else []
+    subnet_ip_details = get_all_eni_ips(network_interfaces)
     ip_details_map = {
         ip_info['ip']: ip_info
         for ip_info in subnet_ip_details.get(subnet_id, [])
@@ -878,6 +879,10 @@ def get_subnet_ips(subnet_id):
         ec2_client, subnet_ids=[subnet_id]
     )
 
+    if not subnets_response.get('Subnets') or len(subnets_response['Subnets']) == 0:
+        logger.warning(f"Subnet not found: {subnet_id}")
+        return jsonify({'error': 'Subnet not found'}), 404
+
     subnet = subnets_response['Subnets'][0]
 
     # Prepare IP data
@@ -928,6 +933,10 @@ def get_subnet_ips_paginated(subnet_id):
     subnets_response, enis_response = fetch_subnet_and_enis_parallel(
         ec2_client, subnet_ids=[subnet_id]
     )
+
+    if not subnets_response.get('Subnets') or len(subnets_response['Subnets']) == 0:
+        logger.warning(f"Subnet not found in paginated endpoint: {subnet_id}")
+        return jsonify({'error': 'Subnet not found'}), 404
 
     subnet = subnets_response['Subnets'][0]
 

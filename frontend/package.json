@@ -1,18 +1,18 @@
 {
   "name": "subnetviz",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Visualize subnet allocation and fragmentation in AWS VPCs",
   "private": true,
   "dependencies": {
-    "ip-address": "^10.1.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "ip-address": "^10.2.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "react-scripts": "5.0.1",
-    "react-window": "^1.8.10"
+    "react-window": "^2.2.7"
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "GENERATE_SOURCEMAP=false react-scripts build",
+    "build": "GENERATE_SOURCEMAP=true react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "analyze": "npm run build && source-map-explorer 'build/static/js/*.js'",

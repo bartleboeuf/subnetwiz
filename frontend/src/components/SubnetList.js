@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { FixedSizeList as List } from 'react-window';
+import { List } from 'react-window';
 import { Address4 } from 'ip-address';
 import './SubnetList.css';
 
@@ -345,14 +345,13 @@ function SubnetList({
 
       {useVirtualization ? (
         <List
-          height={listHeight}
-          itemCount={sortedSubnets.length}
-          itemSize={itemHeight}
-          width="100%"
+          defaultHeight={listHeight}
+          rowCount={sortedSubnets.length}
+          rowHeight={itemHeight}
+          rowComponent={Row}
+          rowProps={{}}
           className="subnet-items virtualized"
-        >
-          {Row}
-        </List>
+        />
       ) : (
         <div className="subnet-items">
           {sortedSubnets.map(subnet => (

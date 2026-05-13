@@ -347,7 +347,8 @@ function App() {
         // 3. Invalid subnet error (likely region changed)
         const isInvalidSubnetError = err.message?.includes('InvalidSubnetID') || err.message?.includes('does not exist');
         if (err.name !== 'AbortError' && !isInvalidSubnetError && selectedRegion?.id === fetchRegionId && selectedSubnet?.id === fetchSubnetId) {
-          setError('Failed to fetch IP data: ' + err.message);
+          console.error('IP data fetch error:', err);
+          setError('Failed to fetch IP data: ' + (err.message || String(err)));
         }
       } finally {
         if (isFirstPage) {

@@ -1,2 +1,2 @@
 #!/bin/bash
-docker build --no-cache -t vpc-ip-viewer .
+docker build --no-cache -t subnetviz .

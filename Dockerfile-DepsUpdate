@@ -1,0 +1,13 @@
+# Development Dockerfile for managing frontend dependencies
+FROM public.ecr.aws/docker/library/node:24-alpine
+
+WORKDIR /app/frontend
+
+# Copy package files
+COPY frontend/package.json frontend/package-lock.json* ./
+
+# Install dependencies (including dev dependencies for full update capability)
+RUN npm install
+
+# Default command: show available commands
+CMD ["npm", "run"]

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { FixedSizeGrid as Grid } from 'react-window';
+import { Grid } from 'react-window';
 import './IpVisualization.css';
 
 // Worker will be loaded dynamically in useEffect
@@ -71,18 +71,19 @@ function IpVisualization({ ipData }) {
 
   // Process IPs asynchronously in chunks to prevent UI blocking
   useEffect(() => {
-    if (!ipData || !ipData.ips) {
-      setProcessedIps([]);
-      return;
-    }
+    try {
+      if (!ipData || !Array.isArray(ipData.ips)) {
+        setProcessedIps([]);
+        return;
+      }
 
-    let isMounted = true;
-    let timeoutIds = [];
+      let isMounted = true;
+      let timeoutIds = [];
 
-    const ips = ipData.ips;
-    const CHUNK_SIZE = 5000; // Process 5K IPs at a time
-    const totalIps = ips.length;
-    const processedIps = [];
+      const ips = ipData.ips;
+      const CHUNK_SIZE = 5000; // Process 5K IPs at a time
+      const totalIps = ips.length;
+      const processedIps = [];
 
     // Process in chunks with async scheduling to prevent UI blocking
     const processChunk = (startIndex) => {
@@ -92,13 +93,15 @@ function IpVisualization({ ipData }) {
 
       for (let i = startIndex; i < endIndex; i++) {
         const ip = ips[i];
-        processedIps.push({
-          ...ip,
-          index: i,
-          color: getIpColor(ip),
-          label: (i % 4 === 0 || ip.status === 'used') ? getIpLabel(ip) : null,
-          hasReservationOverlap: ip.status === 'used' && ip.details?.cidrReservation
-        });
+        if (ip) {
+          processedIps.push({
+            ...ip,
+            index: i,
+            color: getIpColor(ip),
+            label: (i % 4 === 0 || ip.status === 'used') ? getIpLabel(ip) : null,
+            hasReservationOverlap: ip.status === 'used' && ip.details?.cidrReservation
+          });
+        }
       }
 
       // Continue with next chunk if there's more to process
@@ -113,14 +116,18 @@ function IpVisualization({ ipData }) {
       }
     };
 
-    // Start processing
-    processChunk(0);
+      // Start processing
+      processChunk(0);
 
-    // Cleanup: cancel pending processing if component unmounts
-    return () => {
-      isMounted = false;
-      timeoutIds.forEach(id => clearTimeout(id));
-    };
+      // Cleanup: cancel pending processing if component unmounts
+      return () => {
+        isMounted = false;
+        timeoutIds.forEach(id => clearTimeout(id));
+      };
+    } catch (error) {
+      console.error('Error processing IPs:', error);
+      setProcessedIps([]);
+    }
   }, [ipData, getIpColor, getIpLabel]);
 
   // Format IP details for clipboard
@@ -312,14 +319,14 @@ function IpVisualization({ ipData }) {
           <Grid
             columnCount={COLS}
             columnWidth={CELL_SIZE}
-            height={GRID_HEIGHT}
+            defaultHeight={GRID_HEIGHT}
             rowCount={rowCount}
             rowHeight={CELL_SIZE}
-            width={gridWidth}
+            defaultWidth={gridWidth}
+            cellComponent={Cell}
+            cellProps={{}}
             className="ip-grid virtualized"
-          >
-            {Cell}
-          </Grid>
+          />
         ) : (
           <div className="grid-loading">Preparing grid...</div>
         )}

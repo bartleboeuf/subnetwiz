@@ -51,7 +51,7 @@ function About({ isOpen, onClose }) {
         <div className="about-footer">
           <div className="about-info-row">
             <span>Version:</span>
-            <strong>1.0.0</strong>
+            <strong>1.1.0</strong>
           </div>
           <div className="about-info-row">
             <span>Author:</span>

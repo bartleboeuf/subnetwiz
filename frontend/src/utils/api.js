@@ -42,15 +42,33 @@ export const get = async (endpoint, config = {}) => {
     error.status = response.status;
 
     try {
-      error.message = await response.text();
+      const errorText = await response.text();
+      error.message = errorText || `HTTP ${response.status}`;
     } catch (e) {
-      // Response body not available
+      error.message = `HTTP ${response.status}`;
     }
 
     throw error;
   }
 
-  const data = await response.json();
+  let data;
+  try {
+    const text = await response.text();
+    if (!text) {
+      console.error('Empty response body');
+      throw new Error('Empty response from server');
+    }
+    data = JSON.parse(text);
+  } catch (parseError) {
+    console.error('Failed to parse JSON response:', parseError, response);
+    throw new Error('Invalid JSON response from server: ' + parseError.message);
+  }
+
+  if (!data) {
+    console.error('Parsed data is null or undefined');
+    throw new Error('Empty response from server');
+  }
+
   return { data };
 };
 

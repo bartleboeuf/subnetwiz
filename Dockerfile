@@ -44,8 +44,12 @@ RUN groupadd --gid 1000 -r appgroup && \
     mkdir -p /app/.aws/sso/cache && \
     chown -R appuser:appgroup /app
 
-# Copy application code
+# Copy application code and entrypoint script
 COPY --chown=appuser:appgroup app.py .
+COPY --chown=appuser:appgroup entrypoint.sh .
+
+# Make entrypoint executable
+RUN chmod +x entrypoint.sh
 
 # Copy built frontend from builder stage (optimized artifacts only)
 # Note: build/ contains minified JS/CSS with hashed filenames for long-term caching
@@ -75,6 +79,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 # - timeout: 120s (for large subnet API calls)
 # - graceful-timeout: 30s (clean shutdown window)
 # - keep-alive: 2s (shorter for unpredictable AWS latency)
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["gunicorn", \
      "--bind", "0.0.0.0:5000", \
      "--workers", "4", \
